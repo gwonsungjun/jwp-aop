@@ -3,7 +3,14 @@ package core.di.beans.factory.support;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import core.annotation.PostConstruct;
+import core.annotation.Transactional;
+import core.aop.Advice;
+import core.aop.DefaultPointcutAdvisor;
 import core.aop.FactoryBean;
+import core.aop.Pointcut;
+import core.aop.ProxyFactoryBean;
+import core.aop.transactional.TransactionalAdvice;
+import core.aop.transactional.TransactionalPointcut;
 import core.di.beans.factory.ConfigurableListableBeanFactory;
 import core.di.beans.factory.config.BeanDefinition;
 import core.di.context.annotation.AnnotatedBeanDefinition;
@@ -11,6 +18,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeanUtils;
 
+import javax.sql.DataSource;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -69,6 +77,18 @@ public class DefaultBeanFactory implements BeanDefinitionRegistry, ConfigurableL
 
     @SuppressWarnings("rawtypes")
     private void registerBean(Class<?> clazz, Object beanInstance) {
+        if (BeanFactoryUtils.isAnnotatedBean(clazz, Transactional.class)) {
+            System.out.println("clazz = " + clazz);
+            ProxyFactoryBean proxyFactoryBean = new ProxyFactoryBean();
+            proxyFactoryBean.setTarget(beanInstance);
+
+            Pointcut pointcut = new TransactionalPointcut();
+            Advice advice = new TransactionalAdvice(getBean(DataSource.class));
+            proxyFactoryBean.addAdvisor(new DefaultPointcutAdvisor(pointcut, advice));
+
+            beans.put(proxyFactoryBean.getObjectType(), proxyFactoryBean.getObject());
+        }
+
         if (beanInstance instanceof FactoryBean) {
             FactoryBean factory = (FactoryBean) beanInstance;
             try {

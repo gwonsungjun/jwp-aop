@@ -2,6 +2,7 @@ package next.service;
 
 import core.annotation.Inject;
 import core.annotation.Service;
+import core.annotation.Transactional;
 import next.CannotDeleteException;
 import next.dao.AnswerDao;
 import next.dao.QuestionDao;
@@ -15,6 +16,9 @@ import java.util.List;
 public class QnaService {
     private QuestionDao questionDao;
     private AnswerDao answerDao;
+
+    public QnaService() {
+    }
 
     @Inject
     public QnaService(QuestionDao questionDao, AnswerDao answerDao) {
@@ -30,6 +34,7 @@ public class QnaService {
         return answerDao.findAllByQuestionId(questionId);
     }
 
+    @Transactional
     public void deleteQuestion(long questionId, User user) throws CannotDeleteException {
         Question question = questionDao.findById(questionId);
         if (question == null) {
@@ -40,5 +45,12 @@ public class QnaService {
         if (question.canDelete(user, answers)) {
             questionDao.delete(questionId);
         }
+    }
+
+    @Transactional
+    public Answer addAnswer(Answer answer) {
+        Answer savedAnswer = answerDao.insert(answer);
+        questionDao.updateCountOfAnswer(savedAnswer.getQuestionId());
+        return savedAnswer;
     }
 }
